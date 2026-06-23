@@ -1,11 +1,18 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
+using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
+using Unity.Networking.Transport.Relay;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
+using Unity.Services.Relay;
+using Unity.Services.Relay.Models;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class lobby : MonoBehaviour
@@ -47,6 +54,10 @@ public class lobby : MonoBehaviour
     float beatingTimer;
     float pollTimer;
 
+    [Header("leaving the lobby")]
+    public Button leaveButton;
+    string lastPlayerSnapshot;
+
     [Header("displaying the lobby")]
     public GameObject lobbyPanel;
     public TMP_Dropdown mapSelection;
@@ -55,10 +66,17 @@ public class lobby : MonoBehaviour
     public GameObject playerCard;
     List<GameObject> allPlayerCards = new List<GameObject>();
 
+    public TextMeshProUGUI lobbyNameDisplay;
+
     public Transform playerCardsParent;
 
     int lastMap = -1;
     bool isPolling = false;
+
+    [Header("start game")]
+    public Button playButton;
+    public GameObject lobbyLogicParent;
+    public string startGameKey;
 
     private void Awake()
     {
@@ -68,7 +86,9 @@ public class lobby : MonoBehaviour
         makeLobby.onClick.AddListener(creatLobby);
         joinButton.onClick.AddListener(() => joinLobby(codeInput.text, false));
         quickJoinButton.onClick.AddListener(quickJoin);
-        doneChoosing.onClick.AddListener(() => { createJoinPanel.SetActive(true); namePanel.SetActive(false); });
+        leaveButton.onClick.AddListener(() => leaveLobby(AuthenticationService.Instance.PlayerId));
+        doneChoosing.onClick.AddListener(chooseName);
+        playButton.onClick.AddListener(startGame);
 
         beatingTimer = 0;
         pollTimer = 0;
@@ -93,6 +113,35 @@ public class lobby : MonoBehaviour
         {
             _ = listLobbies();
             searchCooldown = timeBetweenRefreshes;
+        }
+    }
+
+    void chooseName()
+    {
+        namePanel.SetActive(false);
+        createJoinPanel.SetActive(true);
+    }
+
+    async void startGame()
+    {
+        try
+        {
+            Allocation alloc = await RelayService.Instance.CreateAllocationAsync(3);
+            string joinCode = await RelayService.Instance.GetJoinCodeAsync(alloc.AllocationId);
+            RelayServerData serverData = alloc.ToRelayServerData("dtls");
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(serverData);
+            NetworkManager.Singleton.StartHost();
+
+            lobbyLogicParent.SetActive(false);
+
+            UpdateLobbyOptions options = new UpdateLobbyOptions { Data = new Dictionary<string, DataObject> { { startGameKey, new DataObject(DataObject.VisibilityOptions.Member, joinCode)} } };
+            Lobby lobby = await LobbyService.Instance.UpdateLobbyAsync(joinedLobby.Id, options);
+
+            joinedLobby = lobby;
+        }
+        catch (RelayServiceException exc)
+        {
+            Debug.Log(exc);
         }
     }
 
@@ -122,6 +171,23 @@ public class lobby : MonoBehaviour
             {
                 Lobby l = await LobbyService.Instance.GetLobbyAsync(joinedLobby.Id);
                 joinedLobby = l;
+
+                string localId = AuthenticationService.Instance.PlayerId;
+                if (joinedLobby.Players.Any(p => p.Id == localId) == false)
+                {
+                    joinedLobby = null;
+                    hostLobby = null;
+                    lastMap = -1;
+                }
+
+                if (joinedLobby.Data != null && joinedLobby.Data.TryGetValue(startGameKey, out DataObject startGameData) && startGameData.Value != "0")
+                {
+                    if (isHost() == false)
+                    {
+                        joinRelay(joinedLobby.Data[startGameKey].Value);
+                    }
+                    joinedLobby = null;
+                }
             }
             catch (LobbyServiceException exc)
             {
@@ -134,22 +200,45 @@ public class lobby : MonoBehaviour
         }
     }
 
+    async void joinRelay(string joinCode)
+    {
+        try
+        {
+            JoinAllocation joinAlloc = await RelayService.Instance.JoinAllocationAsync(joinCode);
+            RelayServerData serverData = joinAlloc.ToRelayServerData("dtls");
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(serverData);
+            NetworkManager.Singleton.StartClient();
+
+            lobbyLogicParent.SetActive(false);
+        }
+        catch (RelayServiceException exc)
+        {
+            Debug.Log(exc);
+        }
+    }
+
     void displayLobby()
     {
         lobbyPanel.SetActive(joinedLobby != null);
 
-        if (hostLobby != null && joinedLobby != null)
+        if (joinedLobby == null) return;
+
+
+        mapSelection.gameObject.SetActive(isHost());
+        selectedMap.gameObject.SetActive(!isHost());
+
+        playButton.gameObject.SetActive(isHost());
+
+        if (isHost())
         {
-            mapSelection.gameObject.SetActive(true);
-            selectedMap.gameObject.SetActive(false);
 
             if (mapSelection.value != lastMap)
             {
                 lastMap = mapSelection.value;
-                updateLobby("map", mapSelection.captionText.text);
+                updateLobby("map", mapSelection.captionText.text, DataObject.IndexOptions.S1);
             }
         }
-        else if (joinedLobby != null)
+        else
         {
             mapSelection.gameObject.SetActive(false);
             selectedMap.gameObject.SetActive(true);
@@ -159,13 +248,14 @@ public class lobby : MonoBehaviour
                 selectedMap.text = "selected map : " + joinedLobby.Data["map"].Value;
             }
         }
+        string snapshot = string.Join(",", joinedLobby.Players.ConvertAll(p => p.Id));
 
-        if (joinedLobby != null)
+        if (snapshot != lastPlayerSnapshot)
         {
+            lastPlayerSnapshot = snapshot;
+
             foreach (GameObject card in allPlayerCards)
-            {
-                Destroy(card);
-            }
+            Destroy(card);
             allPlayerCards.Clear();
 
             foreach (Player player in joinedLobby.Players)
@@ -173,17 +263,33 @@ public class lobby : MonoBehaviour
                 GameObject spawnedCard = Instantiate(playerCard, playerCardsParent);
                 allPlayerCards.Add(spawnedCard);
 
-                TextMeshProUGUI playerDisplayedName = spawnedCard.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
-                playerDisplayedName.text = player.Data["playerName"].Value;
+                spawnedCard.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = player.Data["playerName"].Value;
+
+                Button playerKickButton = spawnedCard.transform.GetChild(1).GetComponent<Button>();
+                string capturedId = player.Id;
+                playerKickButton.onClick.AddListener(() => leaveLobby(capturedId));
+                playerKickButton.gameObject.SetActive(isHost() && player.Id != AuthenticationService.Instance.PlayerId);
             }
         }
+
+
+        lobbyNameDisplay.text = joinedLobby.Name;
+
     }
-    async void updateLobby(string key, string value)
+
+    bool isHost()
     {
+        return joinedLobby.HostId == AuthenticationService.Instance.PlayerId;
+    }
+
+    async void updateLobby(string key, string value, DataObject.IndexOptions index = 0)
+    {
+        if (hostLobby == null) return;
+
         try
         {
             UpdateLobbyOptions options = new UpdateLobbyOptions();
-            options.Data = new Dictionary<string, DataObject> { { key, new DataObject(DataObject.VisibilityOptions.Public, value) } };
+            options.Data = new Dictionary<string, DataObject> { { key, new DataObject(DataObject.VisibilityOptions.Public, value, index) } };
 
             hostLobby = await LobbyService.Instance.UpdateLobbyAsync(hostLobby.Id, options);
         }
@@ -287,7 +393,6 @@ public class lobby : MonoBehaviour
             Debug.LogWarning(exc);
         }
     }
-
     async void quickJoin()
     {
         try 
@@ -297,6 +402,23 @@ public class lobby : MonoBehaviour
         catch (LobbyServiceException exc)
         {
             Debug.LogWarning(exc);
+        }
+    }
+    async void leaveLobby(string id)
+    {
+        try
+        {
+            await LobbyService.Instance.RemovePlayerAsync(joinedLobby.Id, id);
+            if (id == AuthenticationService.Instance.PlayerId)
+            {
+                joinedLobby = null;
+                hostLobby = null;
+                lastMap = -1;
+            }
+        }
+        catch (LobbyServiceException exc)
+        {
+            Debug.Log(exc);
         }
     }
 }

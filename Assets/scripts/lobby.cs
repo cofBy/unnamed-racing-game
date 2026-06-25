@@ -118,8 +118,11 @@ public class lobby : MonoBehaviour
 
     void chooseName()
     {
-        namePanel.SetActive(false);
-        createJoinPanel.SetActive(true);
+        if (string.IsNullOrWhiteSpace(nameInput.text) == false)
+        {
+            namePanel.SetActive(false);
+            createJoinPanel.SetActive(true);
+        }
     }
 
     async void startGame()

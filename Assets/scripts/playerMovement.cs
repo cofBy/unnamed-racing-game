@@ -44,7 +44,6 @@ public class playerMovement : NetworkBehaviour
     public GameObject bodySprite;
     public float flipSpeed;
     float sizeX;
-
     private void Start()
     {
         name = "player " + OwnerClientId;
@@ -85,8 +84,8 @@ public class playerMovement : NetworkBehaviour
         speed = accCurve.Evaluate(dt);
 
 
-        bool flying = !grounded();
-        bool running = Mathf.Abs(pointDir.x) > runningThreshold && grounded();
+        bool flying = !grounded(length * 1.25f);
+        bool running = Mathf.Abs(pointDir.x) > runningThreshold && grounded(length);
         anim.SetBool("running", running);
         anim.SetBool("flying", flying);
 
@@ -96,20 +95,13 @@ public class playerMovement : NetworkBehaviour
             sizeX = Mathf.Clamp(sizeX + (flipSpeed * -moveDir.x * Time.deltaTime), -1, 1);
         }
 
-        if (flying)
-        {
-            transform.up = rb.linearVelocity;
-        }
-        else
-        {
-            transform.up = Vector3.up;
-
-        }
+        float angle = Mathf.Atan2(-rb.linearVelocityX, rb.linearVelocityY) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0, 0, flying ? angle : 0);
     }
     private void FixedUpdate()
     {
 
-        if (grounded())
+        if (grounded(length))
         {
             gPull = 0;
         }
@@ -127,7 +119,7 @@ public class playerMovement : NetworkBehaviour
         Gizmos.DrawRay(transform.position, Vector2.down * length);
     }
 
-    bool grounded()
+    bool grounded(float length)
     {
         return Physics2D.Raycast(transform.position, Vector2.down, length, groundMask);
     }

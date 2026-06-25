@@ -39,6 +39,7 @@ public class gun : NetworkBehaviour
     public Transform armsHint;
     public Vector3 defulteHintPos;
 
+    public bool oneHandedGun;
     public Transform targetR, targetL;
     Vector2 rPos, lPos;
 
@@ -72,10 +73,13 @@ public class gun : NetworkBehaviour
 
         bool lookingRight = Vector3.Dot(gunObject.right, Vector3.right) > 0;
 
-        armsHint.position = transform.position + (lookingRight ? defulteHintPos : new Vector3(-defulteHintPos.x, defulteHintPos.y));
+        if (oneHandedGun == false)
+        {
+            armsHint.position = transform.position + (lookingRight ? defulteHintPos : new Vector3(-defulteHintPos.x, defulteHintPos.y));
 
-        targetL.localPosition = lookingRight ? lPos : rPos;
-        targetR.localPosition = lookingRight ? rPos : lPos;
+            targetL.localPosition = lookingRight ? lPos : rPos;
+            targetR.localPosition = lookingRight ? rPos : lPos;
+        }
     }
 
     private void OnDrawGizmosSelected()

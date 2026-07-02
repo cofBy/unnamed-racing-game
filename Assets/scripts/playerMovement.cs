@@ -52,9 +52,6 @@ public class playerMovement : NetworkBehaviour
     public GameObject bodySprite;
     public float flipSpeed;
     float sizeX;
-
-    [Header("CameraMovement")]
-    cameraMovment cam;
     private void Start()
     {
         name = "player " + OwnerClientId;
@@ -62,8 +59,6 @@ public class playerMovement : NetworkBehaviour
         pointDir = Vector2.right;
         moveDir = Vector2.right;
         sizeX = -1;
-
-        cam = Camera.main.GetComponent<cameraMovment>();
     }
     private void OnEnable()
     {
@@ -71,12 +66,6 @@ public class playerMovement : NetworkBehaviour
     }
     private void Update()
     {
-        if (IsOwner)
-        {
-            cam.spawned = IsSpawned;
-            cam.target = rb;
-        }
-
         if (IsOwner == false || IsSpawned == false) return;
 
         pointDir = moving.action.ReadValue<Vector2>();
@@ -153,7 +142,6 @@ public class playerMovement : NetworkBehaviour
             rb.linearVelocity = new Vector2(moveValue, gPull) + (lastTangent * slideAmount) + knockBackinfo.targetVel;
         }
         slideAmount = slideAmount < 0 ? Mathf.Min(slideAmount + slideFalloff, 0) : Mathf.Max(slideAmount - slideFalloff, 0);
-        Debug.Log(slideAmount);
     }
 
     bool grounded(float length, out RaycastHit2D hit, bool useLocalDown = false)

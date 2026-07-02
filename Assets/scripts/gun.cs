@@ -16,9 +16,11 @@ public class gun : NetworkBehaviour
 
     [Header("shooting")]
     public items heldItem;
-    public enum items { shotgun, grappleHook, rocketLauncher, stickyShoes}
+    public enum items { shotgun, grappleHook, rocketLauncher}
 
-    public GameObject rocket;
+    public rocket rocket;
+    public grappleHook grappleHook;
+    grappleHook spawnedHook;
 
     [Header("self knockBack")]
     public playerMovement movement;
@@ -114,13 +116,12 @@ public class gun : NetworkBehaviour
                     break;
                 case items.grappleHook:
 
+                    shootGrappleHookServerRpc(gunObject.transform.position, gunObject.rotation);
+
                     break;
                 case items.rocketLauncher:
 
                     shootRocketServerRpc(gunObject.position, gunObject.rotation);
-
-                    break;
-                case items.stickyShoes:
 
                     break;
                 default:
@@ -130,24 +131,31 @@ public class gun : NetworkBehaviour
     }
 
     [ServerRpc]
-    void shootRocketServerRpc(Vector3 spawnPos, Quaternion spawnRot)
+    void shootGrappleHookServerRpc(Vector3 spawnPos, Quaternion spawnRot)
     {
-        GameObject newRocket = Instantiate(rocket, spawnPos, spawnRot);
-        NetworkObject netObj = newRocket.GetComponent<NetworkObject>();
-        netObj.Spawn();
-        newRocket.GetComponent<rocket>().spawner = this;
+        if (spawnedHook != null) return;
+        spawnedHook = Instantiate(grappleHook, spawnPos, spawnRot);
+
+        spawnedHook.Initialize(GetComponent<NetworkObject>().NetworkObjectId);
+        spawnedHook.GetComponent<NetworkObject>().Spawn();
     }
 
     [ServerRpc]
-    public void shootServerRpc(Vector3 shooterPos, bool dontIgnorSelf)
+    void shootRocketServerRpc(Vector3 spawnPos, Quaternion spawnRot)
     {
-        if (IsOwner == false || IsSpawned == false) return;
+        rocket newRocket = Instantiate(rocket, spawnPos, spawnRot);
+        newRocket.GetComponent<NetworkObject>().Spawn();
+        newRocket.spawner = this;
+    }
 
+    [ServerRpc]
+    public void shootServerRpc(Vector3 shooterPos, bool dontIgnoreSelf)
+    {
         Collider2D[] hits = Physics2D.OverlapCircleAll(shooterPos, shootSize, playersMask);
 
         foreach (Collider2D hit in hits)
         {
-            if (hit != col || dontIgnorSelf)
+            if (hit != col || dontIgnoreSelf)
             {
                 Vector2 knockDir = ((Vector2)(hit.transform.position - shooterPos)).normalized * gunStrength;
                 ulong hitClientId = hit.GetComponent<NetworkObject>().OwnerClientId;

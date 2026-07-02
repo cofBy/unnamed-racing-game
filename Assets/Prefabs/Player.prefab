@@ -1067,6 +1067,7 @@ GameObject:
   - component: {fileID: 3461162072757986346}
   - component: {fileID: -3313252213346524857}
   - component: {fileID: 6531582531636989559}
+  - component: {fileID: 6278861587110409701}
   - component: {fileID: 5633198910128068516}
   - component: {fileID: 6027366418452332665}
   - component: {fileID: 274410818814399249}
@@ -1335,6 +1336,30 @@ MonoBehaviour:
   flyingThreshold: 3
   bodySprite: {fileID: 6691966205606068103}
   flipSpeed: 15
+--- !u!114 &6278861587110409701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8155538224936424213}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdc6a7406dbc5974da77f705fc121bfc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  ShowTopMostFoldoutHeaderGroup: 1
+  target: {fileID: 5695566787744332062}
+  playerGun: {fileID: 5633198910128068516}
+  offset: {x: 0, y: 0, z: -10}
+  followBehavior: 0.4
+  velocityCab: 15
+  speed: 0.3
+  minVel: 10
+  maxVel: 30
+  minSize: 13
+  maxSize: 23
+  sizeChangingSpeed: 0.2
 --- !u!114 &5633198910128068516
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1351,8 +1376,9 @@ MonoBehaviour:
   shooting: {fileID: 1120369429361536294, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   aiming: {fileID: -5630151704836100654, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   fireRate: 0.3
-  heldItem: 0
-  rocket: {fileID: 7419681295885655189, guid: d2521a87290489d4d8f009388dab200f, type: 3}
+  heldItem: 1
+  rocket: {fileID: -6126133330694577639, guid: d2521a87290489d4d8f009388dab200f, type: 3}
+  grappleHook: {fileID: 6231234909665477747, guid: 377d56ed04928fe439440dc7db008ad3, type: 3}
   movement: {fileID: 6531582531636989559}
   knockBackinfo: {fileID: 6027366418452332665}
   col: {fileID: 242478319718257739}

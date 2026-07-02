@@ -96,6 +96,14 @@ public class lobby : MonoBehaviour
 
     async void Start()
     {
+        InitializationOptions options = new InitializationOptions();
+
+#if UNITY_EDITOR
+        options.SetProfile("EditorPlayer");
+#else
+    // Standalone builds get a random profile name so multiple builds can run at once
+    options.SetProfile($"BuildPlayer_{Random.Range(0, 9999)}");
+#endif
         await UnityServices.InitializeAsync();
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
         isReady = true;
@@ -108,11 +116,14 @@ public class lobby : MonoBehaviour
         sendPoll();
         displayLobby();
 
-        searchCooldown -= Time.deltaTime;
-        if (searchCooldown < 0)
+        if (joinedLobby == null)
         {
-            _ = listLobbies();
-            searchCooldown = timeBetweenRefreshes;
+            searchCooldown -= Time.deltaTime;
+            if (searchCooldown < 0)
+            {
+                _ = listLobbies();
+                searchCooldown = timeBetweenRefreshes;
+            }
         }
     }
 
@@ -131,15 +142,24 @@ public class lobby : MonoBehaviour
         {
             Allocation alloc = await RelayService.Instance.CreateAllocationAsync(3);
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(alloc.AllocationId);
-            RelayServerData serverData = alloc.ToRelayServerData("dtls");
-            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(serverData);
+            RelayServerData serverData = alloc.ToRelayServerData("udp");
+
+            if (NetworkManager.Singleton.NetworkConfig.NetworkTransport is UnityTransport transport)
+            {
+                transport.SetRelayServerData(serverData);
+            }
+            else
+            {
+                Debug.LogError("UnityTransport component not found on NetworkManager Config!");
+                return;
+            }
+
+            NetworkManager.Singleton.StartHost();
+            lobbyLogicParent.SetActive(false);
 
             UpdateLobbyOptions options = new UpdateLobbyOptions { Data = new Dictionary<string, DataObject> { { startGameKey, new DataObject(DataObject.VisibilityOptions.Member, joinCode) } } };
             Lobby lobby = await LobbyService.Instance.UpdateLobbyAsync(joinedLobby.Id, options);
             joinedLobby = lobby;
-
-            NetworkManager.Singleton.StartHost();
-            lobbyLogicParent.SetActive(false);
         }
         catch (RelayServiceException exc)
         {
@@ -207,8 +227,18 @@ public class lobby : MonoBehaviour
         try
         {
             JoinAllocation joinAlloc = await RelayService.Instance.JoinAllocationAsync(joinCode);
-            RelayServerData serverData = joinAlloc.ToRelayServerData("dtls");
-            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(serverData);
+            RelayServerData serverData = joinAlloc.ToRelayServerData("udp");
+
+            if (NetworkManager.Singleton.NetworkConfig.NetworkTransport is UnityTransport transport)
+            {
+                transport.SetRelayServerData(serverData);
+            }
+            else
+            {
+                Debug.LogError("UnityTransport component not found on NetworkManager Config!");
+                return;
+            }
+
             NetworkManager.Singleton.StartClient();
 
             lobbyLogicParent.SetActive(false);
@@ -224,6 +254,7 @@ public class lobby : MonoBehaviour
         lobbyPanel.SetActive(joinedLobby != null);
 
         if (joinedLobby == null) return;
+
 
         mapSelection.gameObject.SetActive(isHost());
         selectedMap.gameObject.SetActive(!isHost());
@@ -256,7 +287,7 @@ public class lobby : MonoBehaviour
             lastPlayerSnapshot = snapshot;
 
             foreach (GameObject card in allPlayerCards)
-            Destroy(card);
+                Destroy(card);
             allPlayerCards.Clear();
 
             foreach (Player player in joinedLobby.Players)
@@ -307,9 +338,8 @@ public class lobby : MonoBehaviour
             if (lobbyName.text.Length != 0)
             {
                 Player firstPlayer = getPlayer();
-                CreateLobbyOptions options = new CreateLobbyOptions { IsPrivate = !isPublic.isOn, Player = firstPlayer};
+                CreateLobbyOptions options = new CreateLobbyOptions { IsPrivate = !isPublic.isOn, Player = firstPlayer };
 
-                Debug.Log($"Auth state: {AuthenticationService.Instance.IsSignedIn}, Player ID: {AuthenticationService.Instance.PlayerId}");
                 Lobby newLobby = await LobbyService.Instance.CreateLobbyAsync(lobbyName.text, 4, options);
                 hostLobby = newLobby;
                 joinedLobby = hostLobby;

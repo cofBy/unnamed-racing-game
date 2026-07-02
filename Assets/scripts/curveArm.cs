@@ -1,10 +1,10 @@
-using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class curveArm : MonoBehaviour
 {
     [Header("Points")]
-    public Transform[] points;
+    public List<Transform> points;
 
     [Header("rendering the curve")]
     public LineRenderer curveRender;
@@ -12,17 +12,13 @@ public class curveArm : MonoBehaviour
     public float timer;
 
     Vector2[] linears;
-
     Vector2[] segment;
-    private void Awake()
-    {
-        linears = new Vector2[points.Length - 1];
-        segment = new Vector2[points.Length - 1];
-    }
     private void Update()
     {
-        linears = new Vector2[points.Length - 1];
-        segment = new Vector2[points.Length - 1];
+        if (points.Count < 1) return;
+
+        linears = new Vector2[points.Count - 1];
+        segment = new Vector2[points.Count - 1];
 
         curveRender.positionCount = steps;
         for (int j = 0; j < steps; j++)
@@ -53,12 +49,15 @@ public class curveArm : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        for (int i = 0; i < points.Length; i++)
+        if (points.Count > 2)
         {
-            if (i <  points.Length - 1)
+            for (int i = 0; i < points.Count; i++)
             {
-                Gizmos.color = Color.green;
-                Gizmos.DrawLine(points[i].position, points[i + 1].position);
+                if (i < points.Count - 1)
+                {
+                    Gizmos.color = Color.green;
+                    Gizmos.DrawLine(points[i].position, points[i + 1].position);
+                }
             }
         }
     }

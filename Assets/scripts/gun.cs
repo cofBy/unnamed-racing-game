@@ -43,6 +43,7 @@ public class gun : NetworkBehaviour
 
     public bool oneHandedGun;
     public Transform targetR, targetL;
+    public Transform shoulders;
     Vector2 rPos, lPos;
 
     private void OnEnable()
@@ -73,7 +74,7 @@ public class gun : NetworkBehaviour
         gunObject.position = transform.position + ((Vector3)mousePos - transform.position).normalized * holdingCircleRadius;
         gunObject.right = ((Vector3)mousePos - transform.position).normalized;
 
-        bool lookingRight = Vector3.Dot(gunObject.right, Vector3.right) > 0;
+        bool lookingRight = Vector3.Dot(gunObject.right, transform.right) > 0;
 
         if (oneHandedGun == false)
         {
@@ -81,6 +82,11 @@ public class gun : NetworkBehaviour
 
             targetL.localPosition = lookingRight ? lPos : rPos;
             targetR.localPosition = lookingRight ? rPos : lPos;
+        }
+        else
+        {
+            targetR.localPosition = rPos;
+            shoulders.localScale = new Vector3(lookingRight ? 1 : -1, 1, 1);
         }
     }
 

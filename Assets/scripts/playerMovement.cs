@@ -1,8 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
-using Unity.Hierarchy;
-using UnityEditor.ShaderGraph;
 
 public class playerMovement : NetworkBehaviour
 {
@@ -50,6 +48,7 @@ public class playerMovement : NetworkBehaviour
     public float flyingThreshold;
 
     public GameObject bodySprite;
+    [Range(-1, 1)]public int defaultRight;
     public float flipSpeed;
     float sizeX;
     private void Start()
@@ -94,7 +93,7 @@ public class playerMovement : NetworkBehaviour
         anim.SetBool("running", pointDir.x != 0 && hit);
         anim.SetBool("flying", !hit);
 
-        bodySprite.transform.localScale = new Vector3(sizeX, 1, 1);
+        bodySprite.transform.localScale = new Vector3(sizeX * defaultRight, 1, 1);
         if (sizeX != -moveDir.x)
         {
             sizeX = Mathf.Clamp(sizeX + (flipSpeed * -moveDir.x * Time.deltaTime), -1, 1);

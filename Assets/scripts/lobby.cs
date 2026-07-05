@@ -12,7 +12,6 @@ using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class lobby : MonoBehaviour
@@ -80,10 +79,10 @@ public class lobby : MonoBehaviour
 
     [Header("character selection")]
     public TMP_Dropdown choosenCharacter;
-
-    [Header("Network Prefabs Array")]
     public GameObject[] playerPrefabs;
 
+    [Header("switching maps")]
+    public GameObject[] mapParents;
     private void Awake()
     {
         createJoinPanel.SetActive(false);
@@ -152,6 +151,7 @@ public class lobby : MonoBehaviour
                 Debug.LogError("UnityTransport component not found on NetworkManager Config!");
                 return;
             }
+            mapParents[mapSelection.value].SetActive(true);
 
             NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
 

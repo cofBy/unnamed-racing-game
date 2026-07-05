@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: ground
   m_EditorClassIdentifier: 
   m_Angles:
-  - m_Start: -40
+  - m_Start: -87
     m_End: 161
     m_Order: 0
     m_Sprites:
     - {fileID: 885515122326760158, guid: 014e4b92c644d424a98d1a29d8684743, type: 3}
   - m_Start: -199
-    m_End: -40
+    m_End: -87
     m_Order: 0
     m_Sprites:
     - {fileID: 5241975446212485392, guid: 014e4b92c644d424a98d1a29d8684743, type: 3}

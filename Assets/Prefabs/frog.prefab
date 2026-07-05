@@ -1444,6 +1444,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   targetVel: {x: 0, y: 0}
   knockBackFalloff: {x: 0.1, y: 0.1}
+  body: {fileID: 4846029138787160940, guid: 51e706f02e110e6438865e2663c50a29, type: 3}
+  bodySprite: {fileID: 2100000, guid: 9db9586b4a7fd4c41bee293dda943052, type: 2}
 --- !u!114 &274410818814399249
 MonoBehaviour:
   m_ObjectHideFlags: 0

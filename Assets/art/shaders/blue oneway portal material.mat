@@ -1,18 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-4826024362340133933
-MonoBehaviour:
-  m_ObjectHideFlags: 11
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
-  version: 10
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -20,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: lava material
-  m_Shader: {fileID: -6465566751694194690, guid: 31c94fc966b79284588d8388b550020d, type: 3}
+  m_Name: blue oneway portal material
+  m_Shader: {fileID: -6465566751694194690, guid: 242cf617b39cf0b469f1681ac0e5e7d1, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -57,16 +44,31 @@ Material:
     m_Floats:
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _noise_range: 50
-    - _noise_res: 4
-    - _noise_scale: 0.5
-    - _outline_thickness: 0.1
-    - _speed: 2
-    - _twirl_strength: 0
+    - _edge: 0.1
+    - _noise_scale: 5
+    - _primary_color: 1
+    - _size: 0.25
+    - _swirl_res: 3
+    - _swirl_size: 35.45
+    - _swirl_speed: 20
     m_Colors:
-    - _color: {r: 1, g: 0, b: 0, a: 1}
-    - _outline_color: {r: 0, g: 0.6695833, b: 1, a: 1}
-    - _primary_color: {r: 0.8679245, g: 0.19462252, b: 0.07778563, a: 1}
-    - _secondary_color: {r: 1, g: 0.7532814, b: 0, a: 1}
+    - _color1: {r: 0.14971155, g: 1, b: 0, a: 1}
+    - _color2: {r: 0.15566039, g: 1, b: 0.5824737, a: 1}
+    - _color3: {r: 0.56501216, g: 0.67058825, b: 0.5372549, a: 1}
+    - _primary_color: {r: 0.13725486, g: 0.34347197, b: 1, a: 1}
+    - _secondary_color: {r: 0, g: 0.5821347, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
+--- !u!114 &6194407083444346807
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
+  version: 10

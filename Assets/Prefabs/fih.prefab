@@ -1364,6 +1364,7 @@ MonoBehaviour:
   unClimable: 40
   slideAcc: 0.7
   slideFalloff: 0.3
+  wallMinAngle: 65
   anim: {fileID: 2099225107842989617}
   flyingThreshold: 3
   bodySprite: {fileID: 6691966205606068103}
@@ -1445,6 +1446,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   targetVel: {x: 0, y: 0}
   knockBackFalloff: {x: 0.1, y: 0.1}
+  knockBackGroundedFalloff: {x: 0.4, y: 0.4}
   body: {fileID: 4846029138787160940, guid: 51e706f02e110e6438865e2663c50a29, type: 3}
   bodySprite: {fileID: 2100000, guid: 8bcbf13f35d51834b804ee7c9a198f1e, type: 2}
 --- !u!114 &274410818814399249

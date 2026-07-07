@@ -1,6 +1,7 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.Netcode;
+using UnityEngine.UIElements;
 
 public class playerMovement : NetworkBehaviour
 {
@@ -42,6 +43,7 @@ public class playerMovement : NetworkBehaviour
     public float slideFalloff;
     Vector2 lastTangent;
     float slideAmount;
+    public float wallMinAngle;
 
     [Header("animation")]
     public Animator anim;
@@ -90,18 +92,19 @@ public class playerMovement : NetworkBehaviour
         float dt = timer / timeToMaxSpeed;
         speed = accCurve.Evaluate(dt);
 
-        grounded(length * 1.4f, out RaycastHit2D hit, true);
+        grounded(length * 1.4f, out RaycastHit2D hit);
 
         anim.SetBool("running", pointDir.x != 0 && hit);
         anim.SetBool("flying", !hit);
+
+        bodySprite.transform.up = hit ? hit.normal : rb.linearVelocity;
+        Debug.DrawRay(transform.position, hit.normal * 5, Color.yellow);
 
         bodySprite.transform.localScale = new Vector3(sizeX * defaultRight, 1, 1);
         if (sizeX != -moveDir.x)
         {
             sizeX = Mathf.Clamp(sizeX + (flipSpeed * -moveDir.x * Time.deltaTime), -1, 1);
         }
-
-        transform.up = grounded(length * 1.5f) || hit ? hit.normal : rb.linearVelocity;
     }
     private void FixedUpdate()
     {
@@ -114,31 +117,36 @@ public class playerMovement : NetworkBehaviour
 
         float moveValue = moveDir.x * speed * speedMultiplier;
 
-        RaycastHit2D verHit = Physics2D.Raycast(transform.position, -transform.up, length, groundMask);
-        RaycastHit2D forwardHit = Physics2D.Raycast(transform.position + length * -transform.up, new Vector2(moveDir.x, 0), horiznotalCheckLength, groundMask);
-        RaycastHit2D backHit = Physics2D.Raycast(transform.position + length * -transform.up, new Vector2(-moveDir.x, 0), horiznotalCheckLength, groundMask);
+        RaycastHit2D verHit = Physics2D.Raycast(transform.position, Vector3.down, length, groundMask);
+        RaycastHit2D forwardHit = Physics2D.Raycast(transform.position + length * 0.75f * Vector3.down, new Vector2(moveDir.x, 0), horiznotalCheckLength, groundMask);
+        RaycastHit2D backHit = Physics2D.Raycast(transform.position + length * 0.75f * Vector3.down, new Vector2(-moveDir.x, 0), horiznotalCheckLength, groundMask);
 
         if (verHit || backHit || forwardHit)
         {
-            gPull = 0;
-
             RaycastHit2D angleHit = verHit ? verHit : (forwardHit ? forwardHit : backHit);
 
-            //float error = Vector3.Dot((Vector2)transform.position - (length * (Vector2)transform.up) - angleHit.point, angleHit.normal);
-            //if (error > 0)
-            //{
-            //    rb.position -= angleHit.normal * error;
-            //}
-
             float angle = Mathf.Atan2(angleHit.normal.x, angleHit.normal.y) * Mathf.Rad2Deg;
-            if (Mathf.Abs(angle) > unClimable)
+            if (Mathf.Abs(angle) > wallMinAngle)
+            {
+                gPull = Mathf.Max(gPull - gravityStrength, -gravityClamp);
+                rb.linearVelocity = new Vector2(moveValue, gPull) + (lastTangent * slideAmount) + knockBackinfo.targetVel;
+            }
+            else if (Mathf.Abs(angle) > unClimable)
             {
                 slideAmount = angle > 0 ? Mathf.Max(slideAmount - slideAcc, -gravityClamp) : Mathf.Min(slideAmount + slideAcc, gravityClamp);
-            }
 
-            Vector2 tangent = new Vector2(-angleHit.normal.y, angleHit.normal.x);
-            rb.linearVelocity = (Vector2)(transform.right * moveValue) + (tangent * slideAmount) + knockBackinfo.targetVel;
-            lastTangent = tangent;
+                Vector2 tangent = new Vector2(-angleHit.normal.y, angleHit.normal.x);
+                rb.linearVelocity = (tangent * -moveValue) + (tangent * slideAmount) + knockBackinfo.targetVel;
+                lastTangent = tangent;
+            }
+            else
+            {
+                gPull = 0;
+
+                Vector2 tangent = new Vector2(-angleHit.normal.y, angleHit.normal.x);
+                rb.linearVelocity = (tangent * -moveValue) + (tangent * slideAmount) + knockBackinfo.targetVel;
+                lastTangent = tangent;
+            }
         }
         else
         {

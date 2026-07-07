@@ -40,6 +40,8 @@ public class knockable : NetworkBehaviour
     {
         ParticleSystemRenderer bodyInstace = PoolManager.spawnObject(body, transform.position, new Quaternion()).GetComponent<ParticleSystemRenderer>();
         bodyInstace.material = bodySprite;
+
         transform.position = Vector3.zero;
+        targetVel = Vector3.zero;
     }
 }

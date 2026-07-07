@@ -87,6 +87,9 @@ public class lobby : MonoBehaviour
     [Header("counting down")]
     public countDown countLogic;
 
+    [Header("showing players")]
+    public matchLogic matchLogicObject;
+
     private void Awake()
     {
         createJoinPanel.SetActive(false);
@@ -98,6 +101,8 @@ public class lobby : MonoBehaviour
         leaveButton.onClick.AddListener(() => leaveLobby(AuthenticationService.Instance.PlayerId));
         doneChoosing.onClick.AddListener(chooseName);
         playButton.onClick.AddListener(startGame);
+
+        choosenCharacter.onValueChanged.AddListener(UpdateCharacterInLobby);
 
         beatingTimer = 0;
         pollTimer = 0;
@@ -138,7 +143,7 @@ public class lobby : MonoBehaviour
         }
     }
 
-    async void startGame()
+    public async void startGame()
     {
         try
         {
@@ -169,13 +174,29 @@ public class lobby : MonoBehaviour
             UpdateLobbyOptions options = new UpdateLobbyOptions { Data = new Dictionary<string, DataObject> { { startGameKey, new DataObject(DataObject.VisibilityOptions.Member, joinCode) } } };
             Lobby lobby = await LobbyService.Instance.UpdateLobbyAsync(joinedLobby.Id, options);
             joinedLobby = lobby;
+
+            matchLogicObject.afterStart(joinedLobby);
         }
         catch (RelayServiceException exc)
         {
             Debug.Log(exc);
         }
     }
+    async void UpdateCharacterInLobby(int value)
+    {
+        if (joinedLobby == null) return;
 
+        try
+        {
+            UpdatePlayerOptions options = new UpdatePlayerOptions { Data = new Dictionary<string, PlayerDataObject> { { "playerCharacter", new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, value.ToString()) } } };
+
+            await LobbyService.Instance.UpdatePlayerAsync(joinedLobby.Id, AuthenticationService.Instance.PlayerId, options);
+        }
+        catch (LobbyServiceException exc)
+        {
+            Debug.LogError($"Failed to update character selection: {exc}");
+        }
+    }
     async void sendHeartBeat()
     {
         if (hostLobby != null)

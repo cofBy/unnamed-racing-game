@@ -7,7 +7,7 @@ public class countDown : NetworkBehaviour
 {
     [Header("detecting spawned players")]
     public int requiredPlayers;
-    int spawnedPlayerCount;
+    public int spawnedPlayerCount;
 
     [Header("counting down")]
     public float maxTime;
@@ -45,7 +45,7 @@ public class countDown : NetworkBehaviour
 
         if (spawnedPlayerCount == requiredPlayers)
         {
-            OnAllPlayersSpawned();
+            timer.Value = maxTime;
         }
     }
 
@@ -62,11 +62,6 @@ public class countDown : NetworkBehaviour
 
         timerUI.gameObject.SetActive(timer.Value - Time.deltaTime > 0);
         timerUI.text = Mathf.Round(timer.Value).ToString();
-    }
-
-    private void OnAllPlayersSpawned()
-    {
-        timer.Value = maxTime;
     }
 
     public override void OnNetworkDespawn()

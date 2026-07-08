@@ -126,19 +126,19 @@ MonoBehaviour:
   rb: {fileID: 6080593320622480538}
   ropeSegment: {fileID: 4675496002014130419, guid: acf6992cf98077a48a8fa73762c930a6, type: 3}
   ropeRenderer: {fileID: 3221400551990802471}
-  distanceBetweenSegments: 5
-  maxRopeLength: 30
+  distanceBetweenSegments: 2
+  maxRopeLength: 25
   bezierCurveMaker: {fileID: 2416274469271534358}
-  qualityMultiplier: 2
+  qualityMultiplier: 1
   radius: 0.2
-  length: 1
+  length: 0.7
   groundMask:
     serializedVersion: 2
     m_Bits: 8
   tolerance: 2
   timeToPull: 0.025
   timeToHideRope: 0.1
-  force: 30
+  force: 17
 --- !u!120 &7299782336162229333
 LineRenderer:
   serializedVersion: 3

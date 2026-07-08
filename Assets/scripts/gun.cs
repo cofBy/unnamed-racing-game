@@ -33,6 +33,10 @@ public class gun : NetworkBehaviour
     public float shootSize;
     public LayerMask playersMask;
 
+    [Header("limited shots")]
+    public GameObject[] shotObjects;
+    int currentShots;
+
     [Header("placing the gun")]
     public Transform gunObject;
     public float holdingCircleRadius;
@@ -76,6 +80,20 @@ public class gun : NetworkBehaviour
 
         bool lookingRight = Vector3.Dot(gunObject.right, transform.right) > 0;
 
+        if (movement.angleHit)
+        {
+            if (Physics2D.Raycast(transform.position, Vector2.down, movement.length * 1.75f, movement.groundMask))
+            {
+                currentShots = shotObjects.Length;
+            }
+        }
+
+        for (int i = 0; i < shotObjects.Length; i++)
+        {
+            bool active = i < currentShots;
+            shotObjects[i].SetActive(active);
+        }
+
         if (oneHandedGun == false)
         {
             armsHint.position = transform.position + (lookingRight ? defulteHintPos : new Vector3(-defulteHintPos.x, defulteHintPos.y));
@@ -108,8 +126,9 @@ public class gun : NetworkBehaviour
     {
         if (IsOwner == false || IsSpawned == false) return;
 
-        if (timer > fireRate)
+        if (timer > fireRate && currentShots > 0)
         {
+            currentShots -= 1;
             timer = 0;
 
             switch (heldItem)

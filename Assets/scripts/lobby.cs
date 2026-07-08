@@ -47,8 +47,8 @@ public class lobby : MonoBehaviour
     List<Button> spawnedLobbies = new List<Button>();
 
     [Header("heartBeeting")]
-    Lobby hostLobby;
-    Lobby joinedLobby;
+    [System.NonSerialized] public Lobby hostLobby;
+    [System.NonSerialized] public Lobby joinedLobby;
 
     float beatingTimer;
     float pollTimer;
@@ -90,6 +90,14 @@ public class lobby : MonoBehaviour
     [Header("showing players")]
     public matchLogic matchLogicObject;
 
+    [Header("winning")]
+    public TextMeshProUGUI winnerText;
+    ulong winnerID = 0;
+    bool isInGame = false;
+    Dictionary<ulong, string> clientIdToPlayerId = new();
+    [System.NonSerialized] public bool hasWinner;
+    string winnerName = "";
+
     private void Awake()
     {
         createJoinPanel.SetActive(false);
@@ -123,7 +131,7 @@ public class lobby : MonoBehaviour
         sendPoll();
         displayLobby();
 
-        if (joinedLobby == null)
+        if (joinedLobby == null && isInGame == false)
         {
             searchCooldown -= Time.deltaTime;
             if (searchCooldown < 0)
@@ -166,16 +174,17 @@ public class lobby : MonoBehaviour
             NetworkManager.Singleton.ConnectionApprovalCallback = ApprovalCheck;
 
             int hostChoice = choosenCharacter.value;
-            NetworkManager.Singleton.NetworkConfig.ConnectionData = System.BitConverter.GetBytes(hostChoice);
+            NetworkManager.Singleton.NetworkConfig.ConnectionData = BuildConnectionPayload(hostChoice);
 
             NetworkManager.Singleton.StartHost();
             lobbyLogicParent.SetActive(false);
+            isInGame = true;
 
             UpdateLobbyOptions options = new UpdateLobbyOptions { Data = new Dictionary<string, DataObject> { { startGameKey, new DataObject(DataObject.VisibilityOptions.Member, joinCode) } } };
             Lobby lobby = await LobbyService.Instance.UpdateLobbyAsync(joinedLobby.Id, options);
             joinedLobby = lobby;
 
-            matchLogicObject.afterStart(joinedLobby);
+            matchLogicObject.afterStart();
         }
         catch (RelayServiceException exc)
         {
@@ -212,7 +221,7 @@ public class lobby : MonoBehaviour
     }
     async void sendPoll()
     {
-        if (joinedLobby == null || isPolling) return;
+        if (joinedLobby == null || isPolling || isInGame) return;
 
         pollTimer -= Time.deltaTime;
         if (pollTimer < 0)
@@ -236,9 +245,9 @@ public class lobby : MonoBehaviour
                 {
                     if (isHost() == false)
                     {
+                        isInGame = true;
                         joinRelay(joinedLobby.Data[startGameKey].Value);
                     }
-                    joinedLobby = null;
                 }
             }
             catch (LobbyServiceException exc)
@@ -275,15 +284,73 @@ public class lobby : MonoBehaviour
             mapParents[mapSelection.value].SetActive(true);
 
             int clientChoice = choosenCharacter.value;
-            NetworkManager.Singleton.NetworkConfig.ConnectionData = System.BitConverter.GetBytes(clientChoice);
-
+            NetworkManager.Singleton.NetworkConfig.ConnectionData = BuildConnectionPayload(clientChoice);
             NetworkManager.Singleton.StartClient();
 
             lobbyLogicParent.SetActive(false);
+            isInGame = true;
+
+            matchLogicObject.afterStart();
         }
         catch (RelayServiceException exc)
         {
             Debug.Log(exc);
+        }
+    }
+    public async void ReturnToLobby(ulong winner, string winner_Name)
+    {
+        if (!isInGame) return;
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        winnerID = winner;
+        winnerName = winner_Name;
+        hasWinner = true;
+
+        if (mapSelection.value < mapParents.Length)
+        {
+            mapParents[mapSelection.value].SetActive(false);
+        }
+
+        lobbyLogicParent.SetActive(true);
+        isInGame = false;
+
+        countLogic.spawnedPlayerCount = 0;
+        countLogic.canMove.Value = false;
+
+        lastPlayerSnapshot = "";
+
+        if (isHost())
+        {
+            try
+            {
+                UpdateLobbyOptions options = new UpdateLobbyOptions { Data = new Dictionary<string, DataObject> { { startGameKey, new DataObject(DataObject.VisibilityOptions.Member, "0") } } };
+                hostLobby = await LobbyService.Instance.UpdateLobbyAsync(joinedLobby.Id, options);
+                joinedLobby = hostLobby;
+            }
+            catch (LobbyServiceException exc)
+            {
+                Debug.LogError($"Host failed to reset lobby state: {exc}");
+            }
+        }
+        else
+        {
+            try
+            {
+                joinedLobby = await LobbyService.Instance.GetLobbyAsync(joinedLobby.Id);
+            }
+            catch (LobbyServiceException exc)
+            {
+                Debug.LogError($"Client failed to reconnect to lobby: {exc}");
+
+                joinedLobby = null;
+                hostLobby = null;
+                createJoinPanel.SetActive(true);
+                lobbyPanel.SetActive(false);
+            }
         }
     }
 
@@ -293,11 +360,15 @@ public class lobby : MonoBehaviour
         response.CreatePlayerObject = true;
 
         int prefabIndex = 0;
+        string playerId = "";
 
         if (request.Payload != null && request.Payload.Length >= 4)
         {
             prefabIndex = System.BitConverter.ToInt32(request.Payload, 0);
+            playerId = System.Text.Encoding.UTF8.GetString(request.Payload, 4, request.Payload.Length - 4);
         }
+
+        clientIdToPlayerId[request.ClientNetworkId] = playerId;
 
         if (prefabIndex < 0 || prefabIndex >= playerPrefabs.Length)
         {
@@ -308,6 +379,29 @@ public class lobby : MonoBehaviour
         response.PlayerPrefabHash = netObj.PrefabIdHash;
     }
 
+    Player getLobbyPlayer(ulong clientId, Lobby lobby)
+    {
+        if (!clientIdToPlayerId.TryGetValue(clientId, out string playerId))
+            return null;
+
+        return lobby.Players.Find(p => p.Id == playerId);
+    }
+    public string GetPlayerName(ulong clientId)
+    {
+        Player p = getLobbyPlayer(clientId, joinedLobby);
+        if (p != null && p.Data.TryGetValue("playerName", out var data))
+            return data.Value;
+        return "Unknown";
+    }
+    byte[] BuildConnectionPayload(int characterChoice)
+    {
+        byte[] characterBytes = System.BitConverter.GetBytes(characterChoice);
+        byte[] idBytes = System.Text.Encoding.UTF8.GetBytes(AuthenticationService.Instance.PlayerId);
+        byte[] payload = new byte[characterBytes.Length + idBytes.Length];
+        System.Buffer.BlockCopy(characterBytes, 0, payload, 0, characterBytes.Length);
+        System.Buffer.BlockCopy(idBytes, 0, payload, characterBytes.Length, idBytes.Length);
+        return payload;
+    }
     void displayLobby()
     {
         lobbyPanel.SetActive(joinedLobby != null);
@@ -318,6 +412,8 @@ public class lobby : MonoBehaviour
         selectedMap.gameObject.SetActive(!isHost());
 
         playButton.gameObject.SetActive(isHost());
+
+        winnerText.text = hasWinner ? winnerName + " won!" : "";
 
         if (isHost())
         {
@@ -368,7 +464,7 @@ public class lobby : MonoBehaviour
 
     async void updateLobby(string key, string value, DataObject.IndexOptions index = 0)
     {
-        if (hostLobby == null) return;
+        if (isHost()) return;
 
         try
         {
@@ -455,7 +551,7 @@ public class lobby : MonoBehaviour
         return new Player { Data = new Dictionary<string, PlayerDataObject> { { "playerName", name }, { "playerCharacter", character } } };
     }
 
-    async void joinLobby(string code, bool useID)
+    public async void joinLobby(string code, bool useID)
     {
         if (string.IsNullOrWhiteSpace(code))
         {

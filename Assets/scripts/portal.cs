@@ -9,7 +9,6 @@ public class portal : NetworkBehaviour
 
     [Header("teleporting players")]
     public float distance;
-    public float portalStrength;
 
     [Header("one way portals")]
     public bool isOneWay;
@@ -23,7 +22,10 @@ public class portal : NetworkBehaviour
     {
         for (int i = 0; i < portals.Length; i++)
         {
-            if (i == 1) continue;
+            if (isOneWay)
+            {
+                if (i == 1) continue;
+            }
             ColliderArray2D others = portals[i].GetContactColliders(new ContactFilter2D { layerMask = playerMask });
 
             foreach (Collider2D other in others)
@@ -40,7 +42,7 @@ public class portal : NetworkBehaviour
         }
         if (isOneWay)
         {
-            NetworkObject localPlayer = NetworkManager.Singleton.LocalClient.PlayerObject;
+            NetworkObject localPlayer = NetworkManager.Singleton?.LocalClient.PlayerObject;
             if (localPlayer != null && teleported == false)
             {
                 float sizeT = Mathf.InverseLerp(0, maxDistance, Vector2.Distance(portals[0].transform.position, localPlayer.transform.position));

@@ -1,7 +1,7 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
 
 public class playerMovement : NetworkBehaviour
 {
@@ -36,6 +36,7 @@ public class playerMovement : NetworkBehaviour
     public LayerMask groundMask;
     public float length;
     public float horiznotalCheckLength;
+    [NonSerialized] public RaycastHit2D angleHit;
 
     [Header("sliding on slopes")]
     public float unClimable;
@@ -54,6 +55,11 @@ public class playerMovement : NetworkBehaviour
     public float flipSpeed;
     float sizeX;
 
+    [Header("juice")]
+    public ParticleSystem runningDust;
+    public float maxParticals;
+    bool started;
+
     private void Start()
     {
         pointDir = Vector2.right;
@@ -68,6 +74,11 @@ public class playerMovement : NetworkBehaviour
     {
         if (IsOwner == false || IsSpawned == false) return;
         if (countDown.Instance != null && countDown.Instance.canMove.Value == false) return;
+        if (started == false)
+        {
+            started = true;
+            runningDust.Play();
+        }
 
         pointDir = moving.action.ReadValue<Vector2>();
 
@@ -93,9 +104,12 @@ public class playerMovement : NetworkBehaviour
         speed = accCurve.Evaluate(dt);
 
         grounded(length * 1.4f, out RaycastHit2D hit);
-
         anim.SetBool("running", pointDir.x != 0 && hit);
         anim.SetBool("flying", !hit);
+
+        ParticleSystem.EmissionModule emission = runningDust.emission;
+        emission.rateOverTime = dt * maxParticals * (hit ? 1 : 0);
+        runningDust.transform.localScale = new Vector3(Mathf.Round(sizeX) * -defaultRight, 1, 1);
 
         bodySprite.transform.up = hit ? hit.normal : rb.linearVelocity;
         Debug.DrawRay(transform.position, hit.normal * 5, Color.yellow);
@@ -123,7 +137,7 @@ public class playerMovement : NetworkBehaviour
 
         if (verHit || backHit || forwardHit)
         {
-            RaycastHit2D angleHit = verHit ? verHit : (forwardHit ? forwardHit : backHit);
+            angleHit = verHit ? verHit : (forwardHit ? forwardHit : backHit);
 
             float angle = Mathf.Atan2(angleHit.normal.x, angleHit.normal.y) * Mathf.Rad2Deg;
             if (Mathf.Abs(angle) > wallMinAngle)
